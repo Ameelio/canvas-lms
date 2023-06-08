@@ -239,7 +239,7 @@ GEM
     sqlite3 (1.6.2-x86_64-darwin)
     sqlite3 (1.6.2-x86_64-linux)
     statsd-ruby (1.4.0)
-    strscan (3.0.6)
+    strscan (3.0.1))
     thor (1.2.1)
     thrift (0.9.3.0)
     timeout (0.3.2)
