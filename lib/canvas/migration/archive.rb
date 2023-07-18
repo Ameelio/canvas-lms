@@ -119,6 +119,13 @@ module Canvas::Migration
       Canvas::Migration::PackageIdentifier.new(self).get_converter
     end
 
+    def print_call_stack
+      stack = caller
+      stack.each do |frame|
+        puts frame
+      end
+    end
+
     def unzip_archive
       if @unzipped
         Rails.logger.debug "AAAAAAAAA  11111111111111 - debug"
@@ -129,10 +136,30 @@ module Canvas::Migration
       end
       return if @unzipped
 
+      Rails.logger.debug("----- Printing call stack")
+      print_call_stack
+      Rails.logger.debug("----- Done printing call stack")
+
+      Rails.logger.debug "ls -al #{path}:  "
+      `ls -al #{path}`
+
+      # get the direcotry that path is in
+      path_dir = File.dirname(path)
+      Rails.logger.debug "ls -al #{path_dir}:  "
+      `ls -al #{path_dir}`
+
+      Rails.logger.debug("ls -al unzipped_file_path: #{unzipped_file_path}")
+      `ls -al #{unzipped_file_path}`
+
+      path_dir = File.dirname unzipped_file_path
+      Rails.logger.debug "ls -al #{path_dir}:  (unzipped_file_path)"
+      `ls -al #{path_dir}`
+
+      Rails.logger.debug "Done the horrendous changes for now"
       Rails.logger.debug "Extracting #{path} to #{unzipped_file_path}"
 
-      Rails.logger.debug "SLEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEP 60"
-      puts "SLEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEP 60"
+      Rails.logger.debug "logger debug SLEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEP 60"
+      puts "puts SLEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEP 60"
 
       warnings = CanvasUnzip.extract_archive(path, unzipped_file_path, nested_dir:)
       @unzipped = true
