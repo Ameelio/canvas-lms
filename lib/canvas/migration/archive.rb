@@ -124,6 +124,10 @@ module Canvas::Migration
 
       Rails.logger.debug "Extracting #{path} to #{unzipped_file_path}"
 
+      Rails.logger.debug "SLEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEP 60"
+      puts "SLEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEP 60"
+      sleep 60
+
       warnings = CanvasUnzip.extract_archive(path, unzipped_file_path, nested_dir:)
       @unzipped = true
       unless warnings.empty?
