@@ -164,6 +164,16 @@ module Canvas::Migration
       Rails.logger.debug("exists1: #{exists1}")
       Rails.logger.debug("exists2: #{exists2}")
 
+
+      Rails.logger.debug("whoami:  #{`whoami`}")
+      Rails.logger.debug("path readable?:  #{File.readable?(path)}")
+      Rails.logger.debug("path writable?:  #{File.writable?(path)}")
+      Rails.logger.debug("path executable?:  #{File.executable?(path)}")
+      Rails.logger.debug("unzipped_file_path readable?:  #{File.readable?(unzipped_file_path)}")
+      Rails.logger.debug("unzipped_file_path writable?:  #{File.writable?(unzipped_file_path)}")
+      Rails.logger.debug("unzipped_file_path executable?:  #{File.executable?(unzipped_file_path)}")
+
+
       Rails.logger.debug "Done the horrendous changes for now"
       Rails.logger.debug "Extracting #{path} to #{unzipped_file_path}"
 
