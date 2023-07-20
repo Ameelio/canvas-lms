@@ -19,8 +19,10 @@
 
 class File
   def self.mime_type?(file)
+    Rails.logger.debug("File.mime_type? : entering")
     # INSTRUCTURE: added condition, file.class can also be Tempfile
     if file.instance_of?(File) || file.instance_of?(Tempfile)
+    Rails.logger.debug("File.mime_type? : we're an instance of File or Tempfile")
       mime = if RUBY_PLATFORM.include? "mswin32"
                extensions[File.extname(file.path).delete(".").downcase] rescue nil
              else
@@ -30,6 +32,7 @@ class File
     elsif file.instance_of?(String)
       mime = extensions[(file[file.rindex(".") + 1, file.size]).downcase] rescue nil
     elsif file.respond_to?(:string)
+      Rails.logger.debug("File.mime_type? : file responds to :string")
       temp = File.open(Dir.tmpdir + "/upload_file." + Process.pid.to_s, "wb")
       temp << file.string
       temp.close
@@ -40,11 +43,14 @@ class File
       mime = mime.gsub(/;.*$/, "")
       mime = mime.gsub(/,.*$/, "")
       File.delete(temp.path)
+      Rails.logger.debug("File.mime_type? : Done with file responds to string")
     end
 
+    Rails.logger.debug("File.mime_type? : Splitting the mime type")
     mime = mime&.split(";")&.first
     mime = nil unless mime_types[mime]
 
+    Rails.logger.debug("Returning mime type")
     mime || "unknown/unknown"
   end
 
