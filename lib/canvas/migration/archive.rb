@@ -140,24 +140,29 @@ module Canvas::Migration
       print_call_stack
       Rails.logger.debug("----- Done printing call stack")
 
-      Rails.logger.debug "ls -al #{path}:  "
-      temp = `ls -al #{path}`
+      Rails.logger.debug "ls -alh #{path}:  "
+      temp = `ls -alh #{path}`
       Rails.logger.debug(temp)
 
       # get the direcotry that path is in
       path_dir = File.dirname(path)
-      Rails.logger.debug "ls -al #{path_dir}:  "
-      temp = `ls -al #{path_dir}`
+      Rails.logger.debug "ls -alh #{path_dir}:  "
+      temp = `ls -alh #{path_dir}`
       Rails.logger.debug(temp)
 
-      Rails.logger.debug("ls -al unzipped_file_path: #{unzipped_file_path}")
-      temp = `ls -al #{unzipped_file_path}`
+      Rails.logger.debug("ls -alh unzipped_file_path: #{unzipped_file_path}")
+      temp = `ls -alh #{unzipped_file_path}`
       Rails.logger.debug(temp)
 
       path_dir = File.dirname unzipped_file_path
-      Rails.logger.debug "ls -al #{path_dir}:  (unzipped_file_path)"
-      temp = `ls -al #{path_dir}`
+      Rails.logger.debug "ls -alh #{path_dir}:  (unzipped_file_path directory)"
+      temp = `ls -alh #{path_dir}`
       Rails.logger.debug(temp)
+
+      exists1 = File.exist?(path)
+      exists2 = File.exist?(unzipped_file_path)
+      Rails.logger.debug("exists1: #{exists1}")
+      Rails.logger.debug("exists2: #{exists2}")
 
       Rails.logger.debug "Done the horrendous changes for now"
       Rails.logger.debug "Extracting #{path} to #{unzipped_file_path}"
