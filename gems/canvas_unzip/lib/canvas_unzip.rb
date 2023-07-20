@@ -127,18 +127,23 @@ class CanvasUnzip
     mime_type = File.mime_type?(archive_filename) if mime_type == "application/octet-stream"
 
     if ["application/x-gzip", "application/gzip"].include? mime_type
+      Rails.logger.debug("CANVAS UNZIP:  mime type is gzip")
       file = Zlib::GzipReader.new(file)
       mime_type = "application/x-tar" # it may not actually be a tar though, so rescue if there's a problem
     end
 
     case mime_type
     when "application/zip"
+      Rails.logger.debug("CANVAS UNZIP:  mime type is zip")
       Zip::File.open(file) do |zipfile|
+        Rails.logger.debug("CANVAS UNZIP:  opened zip file")
         zipfile.entries.each_with_index do |zip_entry, index|
+          Rails.logger.debug("CANVAS UNZIP:  yielded zip_entry index #{index}")
           yield(Entry.new(zip_entry), index)
         end
       end
     when "application/x-tar"
+      Rails.logger.debug("CANVAS UNZIP:  mime type is x-tar")
       index = 0
       begin
         Gem::Package::TarReader.new(file).each do |tar_entry|
@@ -151,6 +156,7 @@ class CanvasUnzip
         raise UnknownArchiveType, "invalid tar"
       end
     else
+      Rails.logger.debug("CANVAS UNZIP:  unknown mime type")
       raise UnknownArchiveType, "unknown mime type #{mime_type} for archive #{File.basename(archive_filename)}"
     end
   end
