@@ -81,6 +81,9 @@ class CanvasUnzip
     raise ArgumentError, "File not found" unless File.exist?(archive_filename)
     raise ArgumentError, "Needs block or destination path" unless dest_folder || block_given?
 
+    Rails.logger.debug("CANVAS UNZIP:  extract archive:  #{archive_filename} to #{dest_folder}")
+    Rails.logger.debug("CANVAS UNZIP:  Passed the argumenterrors")
+
     each_entry(archive_filename) do |entry, index|
       if unsafe_entry?(entry)
         add_warning(warnings, entry, :unsafe)
