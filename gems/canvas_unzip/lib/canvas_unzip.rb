@@ -120,8 +120,11 @@ class CanvasUnzip
   def self.each_entry(archive_filename)
     raise ArgumentError, "no block given" unless block_given?
 
+    Rails.logger.debug("CANVAS UNZIP:  begin each_entry")
     file = File.open(archive_filename)
+    Rails.logger.debug("CANVAS UNZIP:  Finished opening the file")
     mime_type = File.mime_type?(file)
+    Rails.logger.debug("CANVAS UNZIP:  Finished reading mimetype")
 
     # on some systems `file` fails to recognize a zip file with no entries; fall back on using the extension
     mime_type = File.mime_type?(archive_filename) if mime_type == "application/octet-stream"
