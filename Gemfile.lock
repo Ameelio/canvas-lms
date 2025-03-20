@@ -1,4 +1,11 @@
 GIT
+  remote: https://github.com/Ameelio/canvas_inline_pdf.git
+  revision: f3ad78a9dddd6f136cf940d2cd82281f7dce97b6
+  ref: f3ad78a9dddd6f136cf940d2cd82281f7dce97b6
+  specs:
+    canvas_inline_pdf (0.1.0.alpha)
+
+GIT
   remote: https://github.com/kreynolds/cassandra-cql.git
   revision: 02b5abbe441a345c051a180327932566fd66bb36
   ref: 02b5abbe441a345c051a180327932566fd66bb36
@@ -1175,6 +1182,7 @@ DEPENDENCIES
   canvas_errors!
   canvas_ext!
   canvas_http!
+  canvas_inline_pdf!
   canvas_kaltura!
   canvas_link_migrator (~> 0.2)
   canvas_mimetype_fu!
