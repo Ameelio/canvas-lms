@@ -67,6 +67,16 @@ class ErrorsController < ApplicationController
   include CaptchaValidation
 
   PER_PAGE = 20
+  PUBLIC_ERROR_FIELDS = %i[
+    backtrace
+    category
+    comments
+    email
+    exception_message
+    message
+    subject
+    user_perceived_severity
+  ].freeze
 
   before_action :require_view_error_reports, except: [:create]
   before_action :validate_captcha!, only: [:create]
@@ -109,29 +119,21 @@ class ErrorsController < ApplicationController
   # @argument error[subject] [Required, String]
   #   The summary of the problem
   #
-  # @argument error[url] [Optional, String]
-  #   URL from which the report was issued
-  #
   # @argument error[email] [Optional, String]
   #   Email address for the reporting user
   #
   # @argument error[comments] [Optional, String]
   #   The long version of the story from the user one what they experienced
   #
-  # @argument error[http_env] [Optional, SerializedHash]
-  #   A collection of metadata about the users' environment.  If not provided,
-  #   canvas will collect it based on information found in the request.
-  #   (Doesn't have to be HTTPENV info, could be anything JSON object that can be
-  #   serialized as a hash, a mobile app might include relevant metadata for
-  #   itself)
+  # The report URL, user identity, account, roles, and request environment are
+  # always collected by Canvas and cannot be supplied by the caller.
   #
   # @example_request
   #   # Create error report
   #   curl 'https://<canvas>/api/v1/error_reports' \
   #         -X POST \
   #         -F 'error[subject]="things are broken"' \
-  #         -F 'error[url]=http://<canvas>/courses/1' \
-  #         -F 'error[description]="All my thoughts on what I saw"' \
+  #         -F 'error[comments]="All my thoughts on what I saw"' \
   #         -H 'Authorization: Bearer <token>'
   def create
     # this action can be called by an unauthenticated user.  To prevent
@@ -140,38 +142,35 @@ class ErrorsController < ApplicationController
     increment_request_cost(200)
 
     reporter = @current_user.try(:fake_student?) ? @real_current_user : @current_user
-    error = params[:error]&.to_unsafe_h || {}
+    submitted_error = params[:error]
 
     # this is a honeypot field to catch spambots. it's hidden via css and should always be empty.
-    return head(:bad_request) if error.delete(:username).present?
+    return head(:bad_request) if submitted_error.respond_to?(:[]) && submitted_error[:username].present?
 
     unless Shard.current.in_current_region?
       logger.debug("Out of region error report received")
       return head(:bad_request)
     end
 
-    error[:user_agent] = request.headers["User-Agent"]
+    error = public_error_params
     begin
-      report_id = error.delete(:id)
-      report = ErrorReport.where(id: report_id.to_i).first if report_id.present? && report_id.to_i != 0
-      report ||= ErrorReport.where(id: session.delete(:last_error_id)).first if session[:last_error_id].present?
+      report = session_error_report(session.delete(:last_error_id), reporter)
       report ||= ErrorReport.new
       error.delete(:category) if report.category.present?
+      submitted_backtrace = error.delete(:backtrace).to_s
+      existing_backtrace = report.backtrace
+      report.assign_data(error)
+      report.backtrace = [submitted_backtrace, existing_backtrace].compact_blank.join("\n\n-----------------------------------------\n\n")
+
+      # These values cross into support systems and must remain server-derived.
       report.user = reporter
-      report.account ||= @domain_root_account
-      backtrace = error.fetch(:backtrace, "")
-      if report.backtrace
-        backtrace += "\n\n-----------------------------------------\n\n"
-        backtrace += report.backtrace
-      end
-      report.backtrace = backtrace
+      report.account = @domain_root_account
+      report.url ||= safe_request_referrer
+      report.user_agent = request.headers["User-Agent"]
       report.http_env ||= Canvas::Errors::Info.useful_http_env_stuff_from_request(request)
       report.request_context_id = RequestContext::Generator.request_id
-      report.assign_data(error)
-      if reporter && !report.data.key?("user_roles")
-        report.data["user_roles"] = reporter.roles(@domain_root_account).join(",")
-      end
-      report.save
+      report.data["user_roles"] = reporter.roles(@domain_root_account).join(",") if reporter
+      report.save!
       report.delay.send_to_external
     rescue => e
       @exception = e
@@ -195,4 +194,34 @@ class ErrorsController < ApplicationController
     Setting.get("error_search_enabled", "true") == "true"
   end
   helper_method :error_search_enabled?
+
+  private
+
+  def public_error_params
+    return {} unless params[:error].respond_to?(:permit)
+
+    params[:error].permit(*PUBLIC_ERROR_FIELDS).to_h.symbolize_keys
+  end
+
+  def session_error_report(report_id, reporter)
+    return unless report_id.present?
+
+    ErrorReport.where(
+      id: report_id,
+      user_id: reporter&.id,
+      account_id: @domain_root_account&.id
+    ).where(created_at: 1.hour.ago..).first
+  end
+
+  def safe_request_referrer
+    return unless request.referer.present?
+
+    uri = URI.parse(request.referer)
+    return unless %w[http https].include?(uri.scheme)
+    return unless uri.host == request.host && uri.port == request.port
+
+    uri.to_s
+  rescue URI::InvalidURIError
+    nil
+  end
 end

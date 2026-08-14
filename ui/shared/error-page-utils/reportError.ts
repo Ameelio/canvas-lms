@@ -52,11 +52,9 @@ export async function reportError(report: ErrorReport): Promise<{logged: boolean
         category: report.category,
         exception_message: report.message,
         message: report.message,
-        url: report.url,
         comments: report.comments,
         email: report.email,
         backtrace: report.backtrace,
-        user_roles: window.ENV?.current_user_roles?.join(','),
       },
     },
   })

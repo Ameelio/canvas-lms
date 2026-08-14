@@ -20,6 +20,7 @@
 
 class BlockEditor < ApplicationRecord
   belongs_to :context, polymorphic: [:wiki_page]
+  before_validation :sanitize_blocks
   before_create :set_root_account_id
 
   alias_attribute :version, :editor_version
@@ -28,6 +29,10 @@ class BlockEditor < ApplicationRecord
 
   def set_root_account_id
     self.root_account_id = context&.root_account_id unless root_account_id
+  end
+
+  def blocks
+    BlockEditorContentSanitizer.sanitize(self[:blocks])
   end
 
   def viewer_iframe_html
@@ -47,5 +52,11 @@ class BlockEditor < ApplicationRecord
     <iframe class='block_editor_view' src='#{Rails.application.routes.url_helpers.block_editor_path(id)}' />
     HTML
     html.html_safe # rubocop:disable Rails/OutputSafety
+  end
+
+  private
+
+  def sanitize_blocks
+    self[:blocks] = BlockEditorContentSanitizer.sanitize(self[:blocks])
   end
 end

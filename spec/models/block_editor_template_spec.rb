@@ -67,4 +67,29 @@ describe BlockEditorTemplate do
     expect(template.active?).to be_truthy
     expect(template.published?).to be_truthy
   end
+
+  it "sanitizes stored template content when writing and reading" do
+    unsafe_tree = {
+      "ROOT" => {
+        "props" => {
+          "text" => "<img src=x onerror=alert(1)>",
+          "href" => "javascript:alert(1)"
+        }
+      }
+    }
+    template = BlockEditorTemplate.create!({
+                                             context: @course,
+                                             name: "name",
+                                             description: "description",
+                                             node_tree: unsafe_tree,
+                                             editor_version: "1.0",
+                                             template_type: "block"
+                                           })
+
+    expect(template.node_tree.dig("ROOT", "props", "text")).not_to include("onerror")
+    expect(template.node_tree.dig("ROOT", "props", "href")).to eq("")
+
+    template.update_column(:node_tree, unsafe_tree)
+    expect(template.reload.node_tree.dig("ROOT", "props", "text")).not_to include("onerror")
+  end
 end

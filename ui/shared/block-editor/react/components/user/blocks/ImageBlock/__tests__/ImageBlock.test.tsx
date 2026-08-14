@@ -16,8 +16,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 import React from 'react'
-import {render, waitFor} from '@testing-library/react'
-import fetchMock from 'fetch-mock'
+import {render} from '@testing-library/react'
 import {Editor, Frame} from '@craftjs/core'
 import {ImageBlock, type ImageBlockProps} from '..'
 
@@ -31,13 +30,6 @@ const renderBlock = (props: Partial<ImageBlockProps> = {}) => {
   )
 }
 describe('ImageBlock', () => {
-  beforeEach(() => {
-    fetchMock.get('*', 200)
-  })
-  afterEach(() => {
-    fetchMock.reset()
-  })
-
   it('should render with default props', () => {
     const {container} = renderBlock()
     const block = container.querySelector('.image-block.empty')
@@ -126,26 +118,16 @@ describe('ImageBlock', () => {
   })
 
   describe('svg handling', () => {
-    beforeEach(() => {
-      fetchMock.reset()
-      fetchMock.get('some-image.svg', {
-        status: 201,
-        body: '<svg></svg>',
-        headers: {'Content-type': 'image/svg+xml'},
-      })
-    })
-
-    it('renders the svg inline', async () => {
+    it('renders the svg as an image instead of executable inline markup', () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch')
       const {container} = renderBlock({
         src: 'some-image.svg',
       })
       const block = container.querySelector('.image-block') as HTMLElement
       expect(block).toBeInTheDocument()
-      await waitFor(() => {
-        expect(block?.querySelector('img')).not.toBeInTheDocument()
-        expect(block.querySelector('svg')).toBeInTheDocument()
-      })
-      expect(block.querySelector('svg')?.outerHTML).toEqual('<svg></svg>')
+      expect(block.querySelector('img')).toHaveAttribute('src', 'some-image.svg')
+      expect(fetchSpy).not.toHaveBeenCalled()
+      fetchSpy.mockRestore()
     })
   })
 })

@@ -840,6 +840,7 @@ class WikiPage < ApplicationRecord
   end
 
   def create_block_editor_data(user_uuid:, data:)
+    data = BlockEditorContentSanitizer.sanitize(data)
     response = Canvas.retriable(tries: content_service_max_retries) do
       ContentServiceClient.create_content(
         root_account_uuid: context.root_account.uuid,
@@ -853,6 +854,7 @@ class WikiPage < ApplicationRecord
   end
 
   def update_block_editor_data(user_uuid:, data:)
+    data = BlockEditorContentSanitizer.sanitize(data)
     ref = external_content_reference
     if ref
       Canvas.retriable(tries: content_service_max_retries) do
@@ -879,7 +881,7 @@ class WikiPage < ApplicationRecord
         external_content_id: ref.content_id
       )
     end
-    content.data
+    BlockEditorContentSanitizer.sanitize(content.data)
   end
 
   private

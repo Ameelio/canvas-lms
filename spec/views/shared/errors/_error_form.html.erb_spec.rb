@@ -26,7 +26,9 @@ describe "shared/errors/_error_form" do
     view_context
     render partial: "shared/errors/error_form"
     expect(response).not_to be_nil
-    expect(response).to include("error[user_roles]")
+    expect(response).not_to include("error[id]")
+    expect(response).not_to include("error[url]")
+    expect(response).not_to include("error[user_roles]")
   end
 
   it "renders captcha when user is not logged in" do

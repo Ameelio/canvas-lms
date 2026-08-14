@@ -22,10 +22,15 @@ class BlockEditorTemplate < ApplicationRecord
   include Workflow
 
   belongs_to :context, polymorphic: %i[account course user]
+  before_validation :sanitize_node_tree
   before_create :set_root_account_id
 
   def set_root_account_id
     self.root_account_id = context&.root_account_id unless root_account_id
+  end
+
+  def node_tree
+    BlockEditorContentSanitizer.sanitize(self[:node_tree])
   end
 
   def active?
@@ -48,4 +53,10 @@ class BlockEditorTemplate < ApplicationRecord
   include Canvas::SoftDeletable
 
   alias_method :published?, :active?
+
+  private
+
+  def sanitize_node_tree
+    self[:node_tree] = BlockEditorContentSanitizer.sanitize(self[:node_tree])
+  end
 end

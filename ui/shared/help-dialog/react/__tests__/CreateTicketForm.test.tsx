@@ -224,12 +224,11 @@ describe('CreateTicketForm', () => {
       )
       expect(lastCapturedRequest!.path).toBe('/error_reports')
       expect(lastCapturedRequest!.method).toBe('POST')
-      expect(lastCapturedRequest!.body.error).toMatchObject({
+      expect(lastCapturedRequest!.body.error).toEqual({
         subject: 'Test subject',
         comments: 'Test description',
         user_perceived_severity: 'just_a_comment',
         email: 'test@instructure.com',
-        context_asset_string: null,
       })
     }, 10000)
 
@@ -251,13 +250,11 @@ describe('CreateTicketForm', () => {
       })
       expect(lastCapturedRequest!.path).toBe('/error_reports')
       expect(lastCapturedRequest!.method).toBe('POST')
-      expect(lastCapturedRequest!.body.error).toMatchObject({
+      expect(lastCapturedRequest!.body.error).toEqual({
         subject: 'Test subject',
         comments: 'Test description',
         user_perceived_severity: 'just_a_comment',
         email: '',
-        context_asset_string: 'course_7',
-        user_roles: 'user,student,teacher,admin,root_admin',
       })
     })
   })
