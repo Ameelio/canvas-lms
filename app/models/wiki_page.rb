@@ -885,9 +885,10 @@ class WikiPage < ApplicationRecord
     return data unless data.is_a?(String)
 
     # Callers expect a Hash; the sanitizer preserves the serialized form when
-    # the service returns a JSON string.
+    # the service returns a JSON string. Parse with the sanitizer's nesting
+    # limit so content it accepted (up to MAX_DEPTH) is not rejected here.
     begin
-      JSON.parse(data)
+      JSON.parse(data, max_nesting: BlockEditorContentSanitizer::MAX_DEPTH)
     rescue JSON::ParserError
       nil
     end

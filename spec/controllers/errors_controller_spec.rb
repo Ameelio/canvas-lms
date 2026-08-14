@@ -240,14 +240,26 @@ describe ErrorsController do
         allow(controller).to receive(:api_request?).and_return(true)
       end
 
-      it "stores a caller-supplied http(s) url" do
-        post "create", params: { error: { message: "boom", url: "https://school.example/courses/1" } }, format: :json
+      it "rebinds a caller-supplied url to the request host" do
+        post "create", params: { error: { message: "boom", url: "https://attacker.example/courses/1" } }, format: :json
 
-        expect(ErrorReport.order(:id).last.url).to eq("https://school.example/courses/1")
+        expect(ErrorReport.order(:id).last.url).to eq("http://test.host/courses/1")
+      end
+
+      it "keeps the path and query of a same-host caller url" do
+        post "create", params: { error: { message: "boom", url: "http://test.host/courses/9?tab=x" } }, format: :json
+
+        expect(ErrorReport.order(:id).last.url).to eq("http://test.host/courses/9?tab=x")
       end
 
       it "ignores a caller-supplied url with an unsafe scheme" do
         post "create", params: { error: { message: "boom", url: "javascript:alert(1)" } }, format: :json
+
+        expect(ErrorReport.order(:id).last.url).to be_nil
+      end
+
+      it "ignores a hostless caller-supplied url" do
+        post "create", params: { error: { message: "boom", url: "https:foo" } }, format: :json
 
         expect(ErrorReport.order(:id).last.url).to be_nil
       end

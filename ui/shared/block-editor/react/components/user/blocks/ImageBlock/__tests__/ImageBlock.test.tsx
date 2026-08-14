@@ -133,6 +133,11 @@ describe('ImageBlock', () => {
       fireEvent.error(img)
       expect(queryByTitle('Loading')).not.toBeInTheDocument()
     })
+
+    // Note: resetting imageLoaded when `src` changes (so a replacement image
+    // re-shows the spinner) can't be exercised here — craft.js's <Frame>
+    // captures its initial children and does not propagate a changed src prop
+    // to the reused component on rerender.
   })
 
   describe('svg handling', () => {

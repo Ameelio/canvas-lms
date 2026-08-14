@@ -218,9 +218,10 @@ class ErrorsController < ApplicationController
   end
 
   # The session, not the caller, selects which report may be enriched: the id
-  # must be the one render_rescue_action stored for this session. A matching
-  # error[id] (posted by the 500-page form) may keep enriching the same report
-  # across resubmissions; an id-less submission consumes the session key once.
+  # must be the (global, shard-unambiguous) one render_rescue_action stored for
+  # this session. A matching error[id] (posted by the 500-page form) may keep
+  # enriching the same report across resubmissions; an id-less submission
+  # consumes the session key once.
   def session_error_report(reporter, requested_id)
     session_report_id = session[:last_error_id]
     return if session_report_id.blank?
@@ -245,16 +246,16 @@ class ErrorsController < ApplicationController
     end
   end
 
+  # Honor a caller-supplied URL only for API clients, and only after
+  # clean_return_to discards the host and rebinds it to this request, so an API
+  # caller cannot plant an off-site host in a support ticket link.
   def client_reported_url
     return unless api_request?
 
     url = error_params[:url]
-    return unless url.is_a?(String) && url.present?
+    return unless url.is_a?(String)
 
-    uri = URI.parse(url)
-    uri.to_s if %w[http https].include?(uri.scheme)
-  rescue URI::Error
-    nil
+    clean_return_to(url)
   end
 
   def client_http_env

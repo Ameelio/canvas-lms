@@ -92,6 +92,12 @@ const ImageBlock = ({
     })
   }, [setCustom, sizeVariant, src])
 
+  // re-arm the loading spinner when the source changes so a replacement image
+  // (e.g. swapping out a broken src) shows loading state again
+  useEffect(() => {
+    setImageLoaded(false)
+  }, [src])
+
   const imgConstrain =
     (maintainAspectRatio ? 'cover' : constraint) || ImageBlock.craft.defaultProps.constraint
 
