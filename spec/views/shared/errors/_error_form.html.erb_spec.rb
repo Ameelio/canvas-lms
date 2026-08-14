@@ -26,9 +26,17 @@ describe "shared/errors/_error_form" do
     view_context
     render partial: "shared/errors/error_form"
     expect(response).not_to be_nil
-    expect(response).not_to include("error[id]")
     expect(response).not_to include("error[url]")
     expect(response).not_to include("error[user_roles]")
+  end
+
+  it "renders the session's error report id so resubmissions enrich the same report" do
+    course_with_student
+    view_context
+    session[:last_error_id] = 42
+    render partial: "shared/errors/error_form"
+    expect(response).to include("error[id]")
+    expect(response).to include("value=\"42\"")
   end
 
   it "renders captcha when user is not logged in" do

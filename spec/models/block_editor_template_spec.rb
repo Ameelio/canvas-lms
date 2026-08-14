@@ -86,8 +86,9 @@ describe BlockEditorTemplate do
                                              template_type: "block"
                                            })
 
-    expect(template.node_tree.dig("ROOT", "props", "text")).not_to include("onerror")
-    expect(template.node_tree.dig("ROOT", "props", "href")).to eq("")
+    stored_props = BlockEditorTemplate.where(id: template).pick(:node_tree).dig("ROOT", "props")
+    expect(stored_props["text"]).not_to include("onerror")
+    expect(stored_props["href"]).to eql("")
 
     template.update_column(:node_tree, unsafe_tree)
     expect(template.reload.node_tree.dig("ROOT", "props", "text")).not_to include("onerror")

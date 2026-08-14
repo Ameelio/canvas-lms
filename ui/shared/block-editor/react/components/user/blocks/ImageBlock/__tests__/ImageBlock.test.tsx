@@ -16,7 +16,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 import React from 'react'
-import {render} from '@testing-library/react'
+import {fireEvent, render} from '@testing-library/react'
 import {Editor, Frame} from '@craftjs/core'
 import {ImageBlock, type ImageBlockProps} from '..'
 
@@ -114,6 +114,24 @@ describe('ImageBlock', () => {
       })
       const img = container.querySelector('img')
       expect(img).toHaveStyle({objectFit: 'contain'})
+    })
+  })
+
+  describe('loading state', () => {
+    it('hides the spinner once the image loads', () => {
+      const {container, queryByTitle} = renderBlock({src: 'https://example.com/image.jpg'})
+      const img = container.querySelector('img') as HTMLImageElement
+      expect(queryByTitle('Loading')).toBeInTheDocument()
+      fireEvent.load(img)
+      expect(queryByTitle('Loading')).not.toBeInTheDocument()
+    })
+
+    it('hides the spinner when the image fails to load', () => {
+      const {container, queryByTitle} = renderBlock({src: 'https://example.com/missing.jpg'})
+      const img = container.querySelector('img') as HTMLImageElement
+      expect(queryByTitle('Loading')).toBeInTheDocument()
+      fireEvent.error(img)
+      expect(queryByTitle('Loading')).not.toBeInTheDocument()
     })
   })
 

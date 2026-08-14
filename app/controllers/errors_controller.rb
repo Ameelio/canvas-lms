@@ -125,8 +125,18 @@ class ErrorsController < ApplicationController
   # @argument error[comments] [Optional, String]
   #   The long version of the story from the user one what they experienced
   #
-  # The report URL, user identity, account, roles, and request environment are
-  # always collected by Canvas and cannot be supplied by the caller.
+  # @argument error[url] [Optional, String]
+  #   The URL of the page where the problem occurred. Honored only for API
+  #   requests, and only when it is a valid http(s) URL; otherwise Canvas
+  #   derives the URL from the request.
+  #
+  # @argument error[http_env] [Optional, SerializedHash]
+  #   A collection of metadata about the client's environment (for example, a
+  #   mobile app's device details). Honored only for API requests; for browser
+  #   requests Canvas collects it from the request itself.
+  #
+  # The user identity, account, roles, user agent, and request context are
+  # always derived by Canvas and cannot be supplied by the caller.
   #
   # @example_request
   #   # Create error report
@@ -142,10 +152,9 @@ class ErrorsController < ApplicationController
     increment_request_cost(200)
 
     reporter = @current_user.try(:fake_student?) ? @real_current_user : @current_user
-    submitted_error = params[:error]
 
     # this is a honeypot field to catch spambots. it's hidden via css and should always be empty.
-    return head(:bad_request) if submitted_error.respond_to?(:[]) && submitted_error[:username].present?
+    return head(:bad_request) if error_params[:username].present?
 
     unless Shard.current.in_current_region?
       logger.debug("Out of region error report received")
@@ -154,7 +163,7 @@ class ErrorsController < ApplicationController
 
     error = public_error_params
     begin
-      report = session_error_report(session.delete(:last_error_id), reporter)
+      report = session_error_report(reporter, error_params[:id])
       report ||= ErrorReport.new
       error.delete(:category) if report.category.present?
       submitted_backtrace = error.delete(:backtrace).to_s
@@ -162,12 +171,13 @@ class ErrorsController < ApplicationController
       report.assign_data(error)
       report.backtrace = [submitted_backtrace, existing_backtrace].compact_blank.join("\n\n-----------------------------------------\n\n")
 
-      # These values cross into support systems and must remain server-derived.
+      # These values cross into support systems and are server-derived; API
+      # callers may supply only a validated page URL and client metadata.
       report.user = reporter
       report.account = @domain_root_account
-      report.url ||= safe_request_referrer
+      report.url ||= client_reported_url || clean_return_to(request.referer)
       report.user_agent = request.headers["User-Agent"]
-      report.http_env ||= Canvas::Errors::Info.useful_http_env_stuff_from_request(request)
+      report.http_env ||= client_http_env || Canvas::Errors::Info.useful_http_env_stuff_from_request(request)
       report.request_context_id = RequestContext::Generator.request_id
       report.data["user_roles"] = reporter.roles(@domain_root_account).join(",") if reporter
       report.save!
@@ -197,31 +207,72 @@ class ErrorsController < ApplicationController
 
   private
 
+  # params[:error] may legitimately arrive as a scalar or array from junk
+  # clients; treat anything but a params hash as absent.
+  def error_params
+    @error_params ||= params[:error].is_a?(ActionController::Parameters) ? params[:error] : ActionController::Parameters.new
+  end
+
   def public_error_params
-    return {} unless params[:error].respond_to?(:permit)
-
-    params[:error].permit(*PUBLIC_ERROR_FIELDS).to_h.symbolize_keys
+    error_params.permit(*PUBLIC_ERROR_FIELDS).to_h.symbolize_keys
   end
 
-  def session_error_report(report_id, reporter)
-    return unless report_id.present?
+  # The session, not the caller, selects which report may be enriched: the id
+  # must be the one render_rescue_action stored for this session. A matching
+  # error[id] (posted by the 500-page form) may keep enriching the same report
+  # across resubmissions; an id-less submission consumes the session key once.
+  def session_error_report(reporter, requested_id)
+    session_report_id = session[:last_error_id]
+    return if session_report_id.blank?
 
-    ErrorReport.where(
-      id: report_id,
-      user_id: reporter&.id,
-      account_id: @domain_root_account&.id
-    ).where(created_at: 1.hour.ago..).first
+    if requested_id.present?
+      return unless requested_id.to_s == session_report_id.to_s
+    else
+      session.delete(:last_error_id)
+    end
+
+    report = ErrorReport.where(id: session_report_id, created_at: 1.hour.ago..).first
+    report if report && session_report_owner?(report, reporter)
   end
 
-  def safe_request_referrer
-    return unless request.referer.present?
+  # The auto-created report may be attributed to the fake student (Student
+  # View), a cross-shard id, or no user at all (pre-auth errors).
+  def session_report_owner?(report, reporter)
+    return true if report.user_id.nil?
 
-    uri = URI.parse(request.referer)
-    return unless %w[http https].include?(uri.scheme)
-    return unless uri.host == request.host && uri.port == request.port
+    [reporter, @current_user, @real_current_user].compact.uniq.any? do |user|
+      [user.id, user.global_id].include?(report.user_id)
+    end
+  end
 
-    uri.to_s
-  rescue URI::InvalidURIError
+  def client_reported_url
+    return unless api_request?
+
+    url = error_params[:url]
+    return unless url.is_a?(String) && url.present?
+
+    uri = URI.parse(url)
+    uri.to_s if %w[http https].include?(uri.scheme)
+  rescue URI::Error
+    nil
+  end
+
+  def client_http_env
+    return unless api_request?
+
+    env = error_params[:http_env]
+    case env
+    when ActionController::Parameters
+      env.to_unsafe_h
+    when String
+      parse_client_http_env(env)
+    end
+  end
+
+  def parse_client_http_env(env)
+    parsed = JSON.parse(env)
+    parsed.is_a?(Hash) ? parsed : nil
+  rescue JSON::ParserError
     nil
   end
 end

@@ -70,6 +70,20 @@ describe ErrorsController do
       assert_recorded_error
     end
 
+    it "is successful when error is submitted as a string" do
+      expect do
+        post "create", params: { error: "broken" }
+      end.to change { ErrorReport.count }.by(1)
+      assert_recorded_error
+    end
+
+    it "is successful when error is submitted as an array" do
+      expect do
+        post "create", params: { error: ["broken"] }
+      end.to change { ErrorReport.count }.by(1)
+      assert_recorded_error
+    end
+
     it "does not update a caller-selected error report" do
       existing_report = ErrorReport.create!(message: "original", account: Account.default)
 
@@ -145,6 +159,110 @@ describe ErrorsController do
       end.to change { ErrorReport.count }.by(1)
 
       expect(existing_report.reload.comments).to be_nil
+    end
+
+    it "does not enrich a stale session report" do
+      authenticate_user!
+      existing_report = ErrorReport.create!(message: "original", user: @user, account: Account.default)
+      existing_report.update_column(:created_at, 2.hours.ago)
+      session[:last_error_id] = existing_report.id
+
+      expect do
+        post "create", params: { error: { comments: "late" } }
+      end.to change { ErrorReport.count }.by(1)
+
+      expect(existing_report.reload.comments).to be_nil
+    end
+
+    it "enriches a session report created in student view for the real user" do
+      authenticate_user!
+      fake_student = course_factory.student_view_student
+      existing_report = ErrorReport.create!(message: "original", user: fake_student, account: Account.default)
+      session[:become_user_id] = fake_student.id
+      session[:last_error_id] = existing_report.id
+
+      expect do
+        post "create", params: { error: { comments: "more detail" } }
+      end.not_to change { ErrorReport.count }
+
+      expect(existing_report.reload.comments).to eq("more detail")
+      expect(existing_report.user_id).to eq(@user.id)
+    end
+
+    it "enriches a session report that has no user" do
+      existing_report = ErrorReport.create!(message: "original", account: Account.default)
+      session[:last_error_id] = existing_report.id
+
+      expect do
+        post "create", params: { error: { comments: "more detail" } }
+      end.not_to change { ErrorReport.count }
+
+      expect(existing_report.reload.comments).to eq("more detail")
+    end
+
+    it "keeps enriching the same report when the form resubmits its id" do
+      authenticate_user!
+      existing_report = ErrorReport.create!(message: "original", user: @user, account: Account.default)
+      session[:last_error_id] = existing_report.id
+
+      expect do
+        post "create", params: { error: { id: existing_report.id, comments: "first try" } }
+        post "create", params: { error: { id: existing_report.id, comments: "second try" } }
+      end.not_to change { ErrorReport.count }
+
+      expect(existing_report.reload.comments).to eq("second try")
+      expect(session[:last_error_id]).to eq(existing_report.id)
+    end
+
+    it "ignores an error id that does not match the session" do
+      authenticate_user!
+      session_report = ErrorReport.create!(message: "mine", user: @user, account: Account.default)
+      other_report = ErrorReport.create!(message: "not mine", user: @user, account: Account.default)
+      session[:last_error_id] = session_report.id
+
+      expect do
+        post "create", params: { error: { id: other_report.id, comments: "sneaky" } }
+      end.to change { ErrorReport.count }.by(1)
+
+      expect(other_report.reload.comments).to be_nil
+      expect(session_report.reload.comments).to be_nil
+    end
+
+    it "derives the report url from the referer even when the referer port differs" do
+      request.headers["HTTP_REFERER"] = "https://test.host:8443/courses/1?m=1"
+      post "create", params: { error: { message: "boom" } }
+
+      expect(ErrorReport.order(:id).last.url).to eq("http://test.host/courses/1?m=1")
+    end
+
+    context "for API requests" do
+      before do
+        allow(controller).to receive(:api_request?).and_return(true)
+      end
+
+      it "stores a caller-supplied http(s) url" do
+        post "create", params: { error: { message: "boom", url: "https://school.example/courses/1" } }, format: :json
+
+        expect(ErrorReport.order(:id).last.url).to eq("https://school.example/courses/1")
+      end
+
+      it "ignores a caller-supplied url with an unsafe scheme" do
+        post "create", params: { error: { message: "boom", url: "javascript:alert(1)" } }, format: :json
+
+        expect(ErrorReport.order(:id).last.url).to be_nil
+      end
+
+      it "stores caller-supplied http_env metadata" do
+        post "create", params: { error: { message: "boom", http_env: { "device" => "test-phone" } } }, format: :json
+
+        expect(ErrorReport.order(:id).last.http_env).to include("device" => "test-phone")
+      end
+
+      it "stores serialized caller-supplied http_env metadata" do
+        post "create", params: { error: { message: "boom", http_env: { "device" => "test-phone" }.to_json } }, format: :json
+
+        expect(ErrorReport.order(:id).last.http_env).to include("device" => "test-phone")
+      end
     end
 
     it "infers user_roles" do

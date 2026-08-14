@@ -120,6 +120,7 @@ const ImageBlock = ({
           alt={alt || ''}
           style={{width: '100%', height: '100%', objectFit: imgConstrain, display: 'inline-block'}}
           onLoad={() => setImageLoaded(true)}
+          onError={() => setImageLoaded(true)}
         />
       </div>
     )

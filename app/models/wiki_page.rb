@@ -881,7 +881,16 @@ class WikiPage < ApplicationRecord
         external_content_id: ref.content_id
       )
     end
-    BlockEditorContentSanitizer.sanitize(content.data)
+    data = BlockEditorContentSanitizer.sanitize(content.data)
+    return data unless data.is_a?(String)
+
+    # Callers expect a Hash; the sanitizer preserves the serialized form when
+    # the service returns a JSON string.
+    begin
+      JSON.parse(data)
+    rescue JSON::ParserError
+      nil
+    end
   end
 
   private

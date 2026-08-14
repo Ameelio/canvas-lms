@@ -2103,6 +2103,23 @@ describe WikiPage do
         expect(result["url"]).to eq("")
       end
 
+      it "parses sanitized serialized data into a Hash" do
+        allow(ContentServiceClient).to receive(:get_content).and_return(
+          double(data: { "content" => "<img src=x onerror=alert(1)>" }.to_json)
+        )
+
+        result = wiki_page.get_block_editor_data(user_uuid:)
+
+        expect(result).to be_a(Hash)
+        expect(result["content"]).not_to include("onerror")
+      end
+
+      it "returns nil for serialized data that cannot be parsed" do
+        allow(ContentServiceClient).to receive(:get_content).and_return(double(data: '{"content":'))
+
+        expect(wiki_page.get_block_editor_data(user_uuid:)).to be_nil
+      end
+
       context "when the page has no ExternalContentReference" do
         let(:page_without_ref) { wiki_page_model(title: "No Ref Page") }
 
