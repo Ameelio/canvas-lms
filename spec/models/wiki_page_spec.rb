@@ -1981,6 +1981,19 @@ describe WikiPage do
         expect(wiki_page.external_content_reference.content_id).to eql external_content_id
       end
 
+      it "sanitizes data before sending it to ContentServiceClient" do
+        unsafe_data = {
+          "content" => "<p onclick=alert(1)>Content</p>",
+          "url" => "javascript:alert(1)"
+        }
+
+        wiki_page.create_block_editor_data(user_uuid:, data: unsafe_data)
+
+        expect(ContentServiceClient).to have_received(:create_content).with(
+          hash_including(data: BlockEditorContentSanitizer.sanitize(unsafe_data))
+        )
+      end
+
       context "when data is nil" do
         it "passes nil data to ContentServiceClient" do
           wiki_page.create_block_editor_data(user_uuid:, data: nil)
@@ -2006,6 +2019,16 @@ describe WikiPage do
           user_uuid:,
           external_content_id:,
           data:
+        )
+      end
+
+      it "sanitizes data before updating ContentServiceClient" do
+        unsafe_data = { "content" => "<img src=x onerror=alert(1)>" }
+
+        wiki_page.update_block_editor_data(user_uuid:, data: unsafe_data)
+
+        expect(ContentServiceClient).to have_received(:update_content).with(
+          hash_including(data: BlockEditorContentSanitizer.sanitize(unsafe_data))
         )
       end
 
@@ -2067,6 +2090,46 @@ describe WikiPage do
         result = wiki_page.get_block_editor_data(user_uuid:)
 
         expect(result).to eql block_editor_data
+      end
+
+      it "sanitizes data returned by ContentServiceClient" do
+        allow(ContentServiceClient).to receive(:get_content).and_return(
+          double(data: { "content" => "<img src=x onerror=alert(1)>", "url" => "javascript:alert(1)" })
+        )
+
+        result = wiki_page.get_block_editor_data(user_uuid:)
+
+        expect(result["content"]).not_to include("onerror")
+        expect(result["url"]).to eq("")
+      end
+
+      it "parses sanitized serialized data into a Hash" do
+        allow(ContentServiceClient).to receive(:get_content).and_return(
+          double(data: { "content" => "<img src=x onerror=alert(1)>" }.to_json)
+        )
+
+        result = wiki_page.get_block_editor_data(user_uuid:)
+
+        expect(result).to be_a(Hash)
+        expect(result["content"]).not_to include("onerror")
+      end
+
+      it "parses serialized data nested beyond JSON's default limit" do
+        deep = (1..120).reduce({ "leaf" => "ok" }) { |acc, _| { "child" => acc } }
+        allow(ContentServiceClient).to receive(:get_content).and_return(double(data: deep.to_json))
+
+        result = wiki_page.get_block_editor_data(user_uuid:)
+
+        expect(result).to be_a(Hash)
+        node = result
+        node = node["child"] while node.key?("child")
+        expect(node["leaf"]).to eq("ok")
+      end
+
+      it "returns nil for serialized data that cannot be parsed" do
+        allow(ContentServiceClient).to receive(:get_content).and_return(double(data: '{"content":'))
+
+        expect(wiki_page.get_block_editor_data(user_uuid:)).to be_nil
       end
 
       context "when the page has no ExternalContentReference" do

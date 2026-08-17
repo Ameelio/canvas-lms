@@ -19,8 +19,12 @@
 #
 
 class BlockEditor < ApplicationRecord
+  include BlockEditorContentSanitization
+
   belongs_to :context, polymorphic: [:wiki_page]
   before_create :set_root_account_id
+
+  sanitizes_block_editor_content :blocks
 
   alias_attribute :version, :editor_version
 

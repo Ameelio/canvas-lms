@@ -20,9 +20,12 @@
 
 class BlockEditorTemplate < ApplicationRecord
   include Workflow
+  include BlockEditorContentSanitization
 
   belongs_to :context, polymorphic: %i[account course user]
   before_create :set_root_account_id
+
+  sanitizes_block_editor_content :node_tree
 
   def set_root_account_id
     self.root_account_id = context&.root_account_id unless root_account_id

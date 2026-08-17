@@ -51,33 +51,6 @@ const ImageBlock = ({
   const [blockRef, setBlockRef] = useState<HTMLDivElement | null>(null)
   const imgRef = useRef<HTMLImageElement | null>(null)
 
-  const [isSVG, setIsSVG] = useState(false)
-  const [svg, setSVG] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!src) return
-
-    fetch(src, {mode: 'cors'})
-      .then(response => {
-        if (response.headers.get('content-type')?.includes('image/svg')) {
-          setIsSVG(true)
-          return response.text()
-        } else {
-          setIsSVG(false)
-          return null
-        }
-      })
-      .then(text => {
-        setSVG(text)
-      })
-      .then(() => {
-        setImageLoaded(true)
-      })
-      .catch(_err => {
-        setIsSVG(false)
-      })
-  }, [src])
-
   const loadingStyle = {
     position: 'absolute',
     left: '10px',
@@ -119,6 +92,12 @@ const ImageBlock = ({
     })
   }, [setCustom, sizeVariant, src])
 
+  // re-arm the loading spinner when the source changes so a replacement image
+  // (e.g. swapping out a broken src) shows loading state again
+  useEffect(() => {
+    setImageLoaded(false)
+  }, [src])
+
   const imgConstrain =
     (maintainAspectRatio ? 'cover' : constraint) || ImageBlock.craft.defaultProps.constraint
 
@@ -147,35 +126,7 @@ const ImageBlock = ({
           alt={alt || ''}
           style={{width: '100%', height: '100%', objectFit: imgConstrain, display: 'inline-block'}}
           onLoad={() => setImageLoaded(true)}
-        />
-      </div>
-    )
-  }
-
-  const renderInlineSVG = () => {
-    return (
-      <div
-        role="treeitem"
-        aria-label={ImageBlock.craft.displayName}
-        tabIndex={-1}
-        className={clazz}
-        style={{...styl, position: 'relative'}}
-        ref={el => {
-          el && connect(drag(el as HTMLDivElement))
-          setBlockRef(el)
-        }}
-      >
-        {!imageLoaded ? (
-          <div style={loadingStyle}>
-            <Spinner renderTitle={I18n.t('Loading')} size="x-small" />
-          </div>
-        ) : null}
-
-        <div
-          // @ts-expect-error
-          ref={imgRef}
-          dangerouslySetInnerHTML={{__html: svg || ''}}
-          style={{width: '100%', height: '100%', objectFit: imgConstrain, display: 'inline-block'}}
+          onError={() => setImageLoaded(true)}
         />
       </div>
     )
@@ -192,8 +143,6 @@ const ImageBlock = ({
         ref={el => el && connect(drag(el as HTMLDivElement))}
       />
     )
-  } else if (isSVG) {
-    return renderInlineSVG()
   } else {
     return renderImage()
   }

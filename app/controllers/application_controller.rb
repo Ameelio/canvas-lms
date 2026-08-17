@@ -2243,7 +2243,9 @@ class ApplicationController < ActionController::Base
     clear_crumbs
     @headers = nil
     load_account unless @domain_root_account
-    session[:last_error_id] = error&.id
+    # store the global id so error report enrichment can't resolve to a
+    # same-numbered report on a different shard
+    session[:last_error_id] = error&.global_id
     if request.xhr? || request.format == :text
       message = exception.xhr_message if exception.respond_to?(:xhr_message)
       render_xhr_exception(error, message, status, status_code)

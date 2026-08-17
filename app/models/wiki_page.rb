@@ -840,6 +840,7 @@ class WikiPage < ApplicationRecord
   end
 
   def create_block_editor_data(user_uuid:, data:)
+    data = BlockEditorContentSanitizer.sanitize(data)
     response = Canvas.retriable(tries: content_service_max_retries) do
       ContentServiceClient.create_content(
         root_account_uuid: context.root_account.uuid,
@@ -853,6 +854,7 @@ class WikiPage < ApplicationRecord
   end
 
   def update_block_editor_data(user_uuid:, data:)
+    data = BlockEditorContentSanitizer.sanitize(data)
     ref = external_content_reference
     if ref
       Canvas.retriable(tries: content_service_max_retries) do
@@ -879,7 +881,17 @@ class WikiPage < ApplicationRecord
         external_content_id: ref.content_id
       )
     end
-    content.data
+    data = BlockEditorContentSanitizer.sanitize(content.data)
+    return data unless data.is_a?(String)
+
+    # Callers expect a Hash; the sanitizer preserves the serialized form when
+    # the service returns a JSON string. Parse with the sanitizer's nesting
+    # limit so content it accepted (up to MAX_DEPTH) is not rejected here.
+    begin
+      JSON.parse(data, max_nesting: BlockEditorContentSanitizer::MAX_DEPTH)
+    rescue JSON::ParserError
+      nil
+    end
   end
 
   private
