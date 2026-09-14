@@ -22,6 +22,8 @@ class BlockEditor < ApplicationRecord
   belongs_to :context, polymorphic: [:wiki_page]
   before_create :set_root_account_id
 
+  attribute :blocks, :santized_html
+
   alias_attribute :version, :editor_version
 
   LATEST_VERSION = "0.2"

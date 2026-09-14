@@ -24,6 +24,8 @@ class BlockEditorTemplate < ApplicationRecord
   belongs_to :context, polymorphic: %i[account course user]
   before_create :set_root_account_id
 
+  attribute :node_tree, :santized_html
+
   def set_root_account_id
     self.root_account_id = context&.root_account_id unless root_account_id
   end
