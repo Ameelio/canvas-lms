@@ -846,7 +846,7 @@ class WikiPage < ApplicationRecord
         user_uuid:,
         context_type: "WikiPage",
         context_id: id,
-        data:
+        data: HtmlSantizer.call(data)
       )
     end
     create_external_content_reference(content_id: response.external_content_id)
@@ -860,7 +860,7 @@ class WikiPage < ApplicationRecord
           root_account_uuid: context.root_account.uuid,
           user_uuid:,
           external_content_id: ref.content_id,
-          data:
+          data: HtmlSantizer.call(data)
         )
       end
     else

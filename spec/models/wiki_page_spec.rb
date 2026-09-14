@@ -2117,4 +2117,201 @@ describe WikiPage do
       end
     end
   end
+
+  describe "block editor XSS sanitization" do
+    let(:wiki_page) { @course.wiki_pages.create!(title: "Test Page") }
+    let(:user_uuid) { SecureRandom.uuid }
+    let(:external_content_id) { SecureRandom.uuid }
+
+    before do
+      allow(Canvas).to receive(:retriable).and_yield
+    end
+
+    describe "#create_block_editor_data with XSS content" do
+      it "sanitizes malicious scripts when creating block editor data" do
+        malicious_data = { "content" => '<p>Content</p><script>alert("XSS")</script>' }
+
+        allow(ContentServiceClient).to receive(:create_content) do |args|
+          expect(args[:data]).not_to include("<script>")
+          expect(args[:data]).not_to include('alert("XSS")')
+          double(external_content_id:)
+        end
+
+        wiki_page.create_block_editor_data(user_uuid:, data: malicious_data)
+
+        expect(ContentServiceClient).to have_received(:create_content)
+      end
+
+      it "sanitizes javascript event handlers when creating block editor data" do
+        malicious_data = { "content" => '<div onclick="alert(\'XSS\')">Click</div>' }
+
+        allow(ContentServiceClient).to receive(:create_content) do |args|
+          expect(args[:data]).not_to include("onclick")
+          expect(args[:data]).not_to include("alert")
+          double(external_content_id:)
+        end
+
+        wiki_page.create_block_editor_data(user_uuid:, data: malicious_data)
+
+        expect(ContentServiceClient).to have_received(:create_content)
+      end
+
+      it "sanitizes dangerous iframes when creating block editor data" do
+        malicious_data = { "content" => '<p>Content</p><iframe src="https://evil.com"></iframe>' }
+
+        allow(ContentServiceClient).to receive(:create_content) do |args|
+          expect(args[:data]).not_to include("<iframe")
+          double(external_content_id:)
+        end
+
+        wiki_page.create_block_editor_data(user_uuid:, data: malicious_data)
+
+        expect(ContentServiceClient).to have_received(:create_content)
+      end
+
+      it "sanitizes javascript: protocol in links when creating block editor data" do
+        malicious_data = { "content" => '<a href="javascript:alert(\'XSS\')">Click</a>' }
+
+        allow(ContentServiceClient).to receive(:create_content) do |args|
+          expect(args[:data]).not_to include("javascript:")
+          double(external_content_id:)
+        end
+
+        wiki_page.create_block_editor_data(user_uuid:, data: malicious_data)
+
+        expect(ContentServiceClient).to have_received(:create_content)
+      end
+
+      it "preserves safe HTML when creating block editor data" do
+        safe_data = { "content" => '<p>Hello <strong>World</strong></p><ul><li>Item</li></ul>' }
+
+        allow(ContentServiceClient).to receive(:create_content) do |args|
+          expect(args[:data]).to include("<p>")
+          expect(args[:data]).to include("<strong>")
+          expect(args[:data]).to include("<ul>")
+          expect(args[:data]).to include("<li>")
+          double(external_content_id:)
+        end
+
+        wiki_page.create_block_editor_data(user_uuid:, data: safe_data)
+
+        expect(ContentServiceClient).to have_received(:create_content)
+      end
+    end
+
+    describe "#update_block_editor_data with XSS content" do
+      before do
+        wiki_page.create_external_content_reference(content_id: external_content_id)
+      end
+
+      it "sanitizes malicious scripts when updating block editor data" do
+        malicious_data = { "content" => '<p>Updated</p><script>alert("XSS")</script>' }
+
+        allow(ContentServiceClient).to receive(:update_content) do |args|
+          expect(args[:data]).not_to include("<script>")
+          expect(args[:data]).not_to include('alert("XSS")')
+          double(external_content_id:)
+        end
+
+        wiki_page.update_block_editor_data(user_uuid:, data: malicious_data)
+
+        expect(ContentServiceClient).to have_received(:update_content)
+      end
+
+      it "sanitizes javascript event handlers when updating block editor data" do
+        malicious_data = { "content" => '<div onmouseover="alert(\'XSS\')">Hover</div>' }
+
+        allow(ContentServiceClient).to receive(:update_content) do |args|
+          expect(args[:data]).not_to include("onmouseover")
+          expect(args[:data]).not_to include("alert")
+          double(external_content_id:)
+        end
+
+        wiki_page.update_block_editor_data(user_uuid:, data: malicious_data)
+
+        expect(ContentServiceClient).to have_received(:update_content)
+      end
+
+      it "sanitizes SVG with embedded scripts when updating block editor data" do
+        malicious_data = { "content" => '<svg><script>alert("XSS")</script></svg>' }
+
+        allow(ContentServiceClient).to receive(:update_content) do |args|
+          expect(args[:data]).not_to include("<script>")
+          double(external_content_id:)
+        end
+
+        wiki_page.update_block_editor_data(user_uuid:, data: malicious_data)
+
+        expect(ContentServiceClient).to have_received(:update_content)
+      end
+
+      it "sanitizes onerror attributes from img tags when updating block editor data" do
+        malicious_data = { "content" => '<img src="invalid" onerror="alert(\'XSS\')">' }
+
+        allow(ContentServiceClient).to receive(:update_content) do |args|
+          expect(args[:data]).not_to include("onerror")
+          expect(args[:data]).not_to include("alert")
+          double(external_content_id:)
+        end
+
+        wiki_page.update_block_editor_data(user_uuid:, data: malicious_data)
+
+        expect(ContentServiceClient).to have_received(:update_content)
+      end
+
+      it "adds security attributes to links when updating block editor data" do
+        data_with_link = { "content" => '<a href="https://example.com">Link</a>' }
+
+        allow(ContentServiceClient).to receive(:update_content) do |args|
+          expect(args[:data]).to include('rel="nofollow')
+          expect(args[:data]).to include('rel="noopener')
+          expect(args[:data]).to include('target="_blank"')
+          double(external_content_id:)
+        end
+
+        wiki_page.update_block_editor_data(user_uuid:, data: data_with_link)
+
+        expect(ContentServiceClient).to have_received(:update_content)
+      end
+
+      it "removes form tags when updating block editor data" do
+        malicious_data = { "content" => '<form action="https://evil.com"><input name="password"></form>' }
+
+        allow(ContentServiceClient).to receive(:update_content) do |args|
+          expect(args[:data]).not_to include("<form")
+          double(external_content_id:)
+        end
+
+        wiki_page.update_block_editor_data(user_uuid:, data: malicious_data)
+
+        expect(ContentServiceClient).to have_received(:update_content)
+      end
+
+      it "removes object tags when updating block editor data" do
+        malicious_data = { "content" => '<object data="https://evil.com"></object>' }
+
+        allow(ContentServiceClient).to receive(:update_content) do |args|
+          expect(args[:data]).not_to include("<object")
+          double(external_content_id:)
+        end
+
+        wiki_page.update_block_editor_data(user_uuid:, data: malicious_data)
+
+        expect(ContentServiceClient).to have_received(:update_content)
+      end
+
+      it "removes embed tags when updating block editor data" do
+        malicious_data = { "content" => '<embed src="https://evil.com">' }
+
+        allow(ContentServiceClient).to receive(:update_content) do |args|
+          expect(args[:data]).not_to include("<embed")
+          double(external_content_id:)
+        end
+
+        wiki_page.update_block_editor_data(user_uuid:, data: malicious_data)
+
+        expect(ContentServiceClient).to have_received(:update_content)
+      end
+    end
+  end
 end
