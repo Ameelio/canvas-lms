@@ -28,5 +28,6 @@ class HtmlSantization
       .scrub!(:nofollow)
       .scrub!(:target_blank)
       .scrub!(:unprintable)
+      .to_s
   end
 end
