@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #
-# Copyright (C) 2017 - present Instructure, Inc.
+# Copyright (C) 2026 - present Ameelio.
 #
 # This file is part of Canvas.
 #
@@ -16,11 +16,26 @@
 #
 # You should have received a copy of the GNU Affero General Public License along
 # with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+module Kratos
+  SessionData = Struct.new(:active, :identity, :metadata, :unique_id, keyword_init: true) do
+    def self.from_json(payload)
+      h = ::JSON.parse(payload.to_s) || {}
 
-Rails.application.config.auth_providers << "saml"
+      unique_id = h.dig("traits", "email") || h["id"]
 
-Rails.configuration.to_prepare do
-  require "saml2"
+      metadata = h.slice("metadata_admin", "metadata_public", "traits")
 
-  SAML2.config[:max_message_size] = 1.megabyte
+      new(
+        active: h["active"],
+        identity: h["identity"],
+        metadata:,
+        unique_id:
+      )
+    end
+
+    def valid?
+      active == true
+    end
+  end
 end
