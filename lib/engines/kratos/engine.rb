@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #
-# Copyright (C) 2026 - present Ameelio
+# Copyright (C) 2026 - present Ameelio.
 #
 # This file is part of Canvas.
 #
@@ -17,17 +17,15 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with this program. If not, see <http://www.gnu.org/licenses/>.
 
-# Scrubs html content provided by the
-# tinymce editor.
-# Notably, dangling tags and dangerous js / links.
-class HtmlSantization
-  def self.call(content)
-    Loofah.html5_fragment(content)
-      .scrub!(:prune)
-      .scrub!(:noopener)
-      .scrub!(:nofollow)
-      .scrub!(:target_blank)
-      .scrub!(:unprintable)
-      .to_s
+module Kratos
+  class Engine < ::Rails::Engine
+    isolate_namespace Kratos
+
+    config.root = __dir__
+
+    initializer "kratos.register", after: :load_config_initializers do |app|
+      app.config.auth_providers ||= []
+      app.config.auth_providers << "Kratos::Provider"
+    end
   end
 end
