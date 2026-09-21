@@ -17,8 +17,18 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with this program. If not, see <http://www.gnu.org/licenses/>.
 
-class SanitizedHtmlType < ActiveRecord::Type::String
-  def cast_value(value)
-    HtmlSanitization.call(super)
+# Scrubs html content provided by the
+# tinymce editor.
+# Notably, dangling tags and dangerous js / links.
+class HtmlSanitization
+  def self.call(content)
+    Loofah
+      .html5_fragment(content)
+      .scrub!(:prune)
+      .scrub!(:noopener)
+      .scrub!(:nofollow)
+      .scrub!(:target_blank)
+      .scrub!(:unprintable)
+      .to_s
   end
 end

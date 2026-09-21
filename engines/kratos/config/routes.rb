@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #
-# Copyright (C) 2026 - present Ameelio
+# Copyright (C) 2026 - present Ameelio.
 #
 # This file is part of Canvas.
 #
@@ -17,8 +17,11 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with this program. If not, see <http://www.gnu.org/licenses/>.
 
-class SanitizedHtmlType < ActiveRecord::Type::String
-  def cast_value(value)
-    HtmlSanitization.call(super)
-  end
+Kratos::Engine.routes.draw do
+  get "/" => "login#new"
+  get "/:id" => "login#new", :as => :kratos_login
+  get "/callback" => "login#callback", :as => :kratos_callback
+  get "/:id/callback" => "login#callback"
+  post "/" => "login#destroy", :as => :kratos_logout
+  post "/:id" => "login#destroy"
 end

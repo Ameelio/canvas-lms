@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #
-# Copyright (C) 2026 - present Ameelio
+# Copyright (C) 2026 - present Ameelio.
 #
 # This file is part of Canvas.
 #
@@ -17,8 +17,10 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with this program. If not, see <http://www.gnu.org/licenses/>.
 
-class SanitizedHtmlType < ActiveRecord::Type::String
-  def cast_value(value)
-    HtmlSanitization.call(super)
-  end
+require_relative "../../engines/kratos/engine"
+
+%w[controllers models].map do |p|
+  Kratos::Engine.root.join("app", p)
+end.each do |p|
+  Rails.autoloaders.main.push_dir(p)
 end
