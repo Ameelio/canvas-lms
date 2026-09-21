@@ -948,6 +948,8 @@ CanvasRails::Application.routes.draw do
   post "login/cas" => "login/cas#destroy", :as => :cas_logout
   post "login/cas/:id" => "login/cas#destroy"
 
+  mount Kratos::Engine => "login/kratos", :as => :kratos
+
   get "login/saml" => "login/saml#new", :as => :saml_login_base
   get "login/saml/logout" => "login/saml#destroy"
   post "login/saml/logout" => "login/saml#destroy"
