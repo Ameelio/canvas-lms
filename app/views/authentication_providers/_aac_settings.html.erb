@@ -17,7 +17,7 @@
 %>
 
 <div class="content-box auth-form-container--new"
-     id="<%= "#{aac.auth_type}_form" if aac.new_record? %>"
+     id="<%= "#{aac.auth_type.parameterize(separator: "_")}_form" if aac.new_record? %>"
      <%= hidden(include_style: true) if aac.new_record? %>>
   <div class="grid-row">
     <div class="col-xs-12 col-lg-11 off-lg-1">
@@ -39,7 +39,7 @@
                     url: url_for(presenter.login_url_options(aac)) %></p>
         <% end %>
 
-        <%= render partial: "#{aac.auth_type}_fields",
+        <%= render partial: "#{aac.auth_type.underscore}_fields",
                  locals: {aac: aac, presenter: presenter, f: f}%>
 
         <%= render partial: "additional_settings", locals: { f:, presenter:, provider: aac } %>
