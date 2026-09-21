@@ -152,7 +152,7 @@ class AuthenticationProvidersPresenter
   end
 
   def id_suffix(aac)
-    suf = aac.class.sti_name
+    suf = aac.class.sti_name.parameterize(separator: "_")
     suf += "_#{aac.id}" unless aac.new_record?
     suf
   end
