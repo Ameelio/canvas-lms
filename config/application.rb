@@ -27,6 +27,10 @@ require "rails/test_unit/railtie"
 
 Bundler.require(*Rails.groups)
 
+Dir.glob("./engines/**/engine.rb").each do |f|
+  require f
+end
+
 debug_launch = lambda do
   if ENV["RUBY_DEBUG_OPEN"]
     require "debug/session"
@@ -43,6 +47,8 @@ debug_launch.call if !defined?(Passenger) && Rails.env.development?
 
 module CanvasRails
   class Application < Rails::Application
+    config.auth_providers = %w[canvas]
+
     config.autoloader = :zeitwerk
 
     config.add_autoload_paths_to_load_path = false
