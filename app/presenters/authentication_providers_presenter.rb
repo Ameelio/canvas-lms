@@ -47,7 +47,7 @@ class AuthenticationProvidersPresenter
   end
 
   def login_url_options(aac)
-    options = { controller: "login/#{aac.auth_type}", action: :new }
+    options = aac.login_url_options
     if !aac.is_a?(AuthenticationProvider::LDAP) &&
        configs.many? { |other| other.auth_type == aac.auth_type }
       if aac.is_a?(AuthenticationProvider::OpenIDConnect) && aac.issuer.present?
@@ -87,7 +87,7 @@ class AuthenticationProvidersPresenter
     new_auth_types.map do |auth_type|
       {
         name: auth_type.display_name,
-        value: auth_type.sti_name
+        value: auth_type.sti_name.parameterize(separator: "_")
       }
     end
   end
@@ -152,7 +152,7 @@ class AuthenticationProvidersPresenter
   end
 
   def id_suffix(aac)
-    suf = aac.class.sti_name
+    suf = aac.class.sti_name.parameterize(separator: "_")
     suf += "_#{aac.id}" unless aac.new_record?
     suf
   end
