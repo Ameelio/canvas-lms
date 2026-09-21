@@ -19,8 +19,8 @@
 
 class SanitizedHtmlType < ActiveRecord::Type::String
   def cast_value(value)
-    HtmlSantization.call(super(value))
+    HtmlSanitization.call(super)
   end
 end
 
-ActiveRecord::register(:santized_html, SantizedHtmlType)
+ActiveRecord.register(:sanitized_html, SanitizedHtmlType)
