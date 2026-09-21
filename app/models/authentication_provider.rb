@@ -110,7 +110,7 @@ class AuthenticationProvider < ApplicationRecord
   acts_as_list scope: { account: self, workflow_state: [nil, "active"] }
 
   def self.valid_auth_types
-    %w[apple canvas cas clever facebook github google ldap linkedin microsoft openid_connect saml saml_idp_discovery].freeze
+    Rails.application.config.auth_providers
   end
 
   validates :auth_type,
@@ -189,6 +189,10 @@ class AuthenticationProvider < ApplicationRecord
     end
 
     "#{base_path}/#{id}"
+  end
+
+  def login_url_options
+    { controller: "login/#{auth_type}", action: :new }
   end
 
   def visible_to?(_user)
