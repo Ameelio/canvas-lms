@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #
-# Copyright (C) 2017 - present Instructure, Inc.
+# Copyright (C) 2026 - present Ameelio.
 #
 # This file is part of Canvas.
 #
@@ -17,10 +17,16 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with this program. If not, see <http://www.gnu.org/licenses/>.
 
-Rails.application.config.auth_providers << "saml"
+module Kratos
+  class Engine < ::Rails::Engine
+    isolate_namespace Kratos
 
-Rails.configuration.to_prepare do
-  require "saml2"
+    config.root = __dir__
 
-  SAML2.config[:max_message_size] = 1.megabyte
+    initializer "kratos.register", after: :load_config_initializers do |app|
+      app.config.auth_providers << "Kratos::Provider"
+    end
+  end
 end
+
+# require_relative "config/routes"
