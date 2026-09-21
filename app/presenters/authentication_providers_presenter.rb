@@ -47,7 +47,13 @@ class AuthenticationProvidersPresenter
   end
 
   def login_url_options(aac)
-    options = { controller: "login/#{aac.auth_type}", action: :new }
+    options = aac.login_url_options
+
+    # Some providers are inside engines and thus need
+    # to submit their route as a string which cannot then
+    # be modified as if its a Hash.
+    return options if options.is_a?(String)
+
     if !aac.is_a?(AuthenticationProvider::LDAP) &&
        configs.many? { |other| other.auth_type == aac.auth_type }
       if aac.is_a?(AuthenticationProvider::OpenIDConnect) && aac.issuer.present?
@@ -56,7 +62,6 @@ class AuthenticationProvidersPresenter
         options[:id] = aac
       end
     end
-    options
   end
 
   def auth?
@@ -87,7 +92,7 @@ class AuthenticationProvidersPresenter
     new_auth_types.map do |auth_type|
       {
         name: auth_type.display_name,
-        value: auth_type.sti_name
+        value: auth_type.sti_name.parameterize(separator: "_")
       }
     end
   end
@@ -152,7 +157,7 @@ class AuthenticationProvidersPresenter
   end
 
   def id_suffix(aac)
-    suf = aac.class.sti_name
+    suf = aac.class.sti_name.parameterize(separator: "_")
     suf += "_#{aac.id}" unless aac.new_record?
     suf
   end

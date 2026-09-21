@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #
-# Copyright (C) 2017 - present Instructure, Inc.
+# Copyright (C) 2026 - present Ameelio
 #
 # This file is part of Canvas.
 #
@@ -17,10 +17,18 @@
 # You should have received a copy of the GNU Affero General Public License along
 # with this program. If not, see <http://www.gnu.org/licenses/>.
 
-Rails.application.config.auth_providers << "saml"
-
-Rails.configuration.to_prepare do
-  require "saml2"
-
-  SAML2.config[:max_message_size] = 1.megabyte
+# Scrubs html content provided by the
+# tinymce editor.
+# Notably, dangling tags and dangerous js / links.
+class HtmlSanitization
+  def self.call(content)
+    Loofah
+      .html5_fragment(content)
+      .scrub!(:prune)
+      .scrub!(:noopener)
+      .scrub!(:nofollow)
+      .scrub!(:target_blank)
+      .scrub!(:unprintable)
+      .to_s
+  end
 end
