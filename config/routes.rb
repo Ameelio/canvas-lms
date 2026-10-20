@@ -1000,6 +1000,13 @@ CanvasRails::Application.routes.draw do
   get "users/self/otps" => "one_time_passwords#index", :as => :one_time_passwords
   delete "users/self/otps" => "one_time_passwords#destroy_all", :as => :destroy_all_one_time_passwords
 
+  get "login/kratos" => "login/kratos#new", :as => :kratos_login
+  get "login/kratos/:id" => "login/kratos#new"
+  get "login/kratos/callback" => "login/kratos#callback", :as => :kratos_callback
+  get "login/kratos/:id/callback" => "login/kratos#callback"
+  post "login/kratos" => "login/kratos#destroy", :as => :kratos_logout
+  post "login/kratos/:id" => "login/kratos#destroy"
+
   # deprecated redirect
   get "login/:id" => "login#new"
 

@@ -20,14 +20,14 @@
 # Scrubs html content provided by the
 # tinymce editor.
 # Notably, dangling tags and dangerous js / links.
-class HtmlSantization
+class HtmlSanitization
   def self.call(content)
     Loofah.html5_fragment(content)
-      .scrub!(:prune)
-      .scrub!(:noopener)
-      .scrub!(:nofollow)
-      .scrub!(:target_blank)
-      .scrub!(:unprintable)
-      .to_s
+          .scrub!(:prune)
+          .scrub!(:noopener)
+          .scrub!(:nofollow)
+          .scrub!(:target_blank)
+          .scrub!(:unprintable)
+          .to_s
   end
 end
